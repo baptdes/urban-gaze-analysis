@@ -2,14 +2,14 @@ from gaze_scene_analysis.segmentation import SegmentationInterface
 from gaze_scene_analysis.types import FrameData, LookedObject
 
 OBJECTS : list[str] = [
-    "person",
-    "car",
-    "bicycle",
-    "dog",
-    "cat",
-    "tree",
-    "building",
-    "road"
+    "humain",
+    "voiture",
+    "vélo",
+    "moto",
+    "panneau",
+    "feu de signalisation",
+    "batiment",
+    "route"
 ]
 
 class ElisaSegmentation(SegmentationInterface):

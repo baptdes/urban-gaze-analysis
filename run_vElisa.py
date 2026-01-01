@@ -2,25 +2,48 @@
 
 import sys
 from gaze_scene_analysis.loaders.VideoLoader import VideoLoader
-from gaze_scene_analysis.preprocessing.DummyPreprocessor import DummyPreprocessor
-from gaze_scene_analysis.segmentation.DummySegmentation import DummySegmentation
+from gaze_scene_analysis.preprocessing.ElisaPreprocessor import ElisaPreprocessor
+from gaze_scene_analysis.segmentation.ElisaSegmentation import ElisaSegmentation
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
+import cv2
 
 def main():
 	# Chemin du dossier de données
-	data_folder = "data/2025-11-20_15-30-11-a3a383b4"
-    #data_folder = "data/2025-11-20_15-40-17-10b70589"
+	#data_folder = "data/2025-11-20_15-30-11-a3a383b4"
+	data_folder = "data/2025-11-20_15-40-17-10b70589"
 
 	# 1. Chargement des données vidéo et capteurs
 	loader = VideoLoader(data_folder)
+    
+    # 1bis. Afficher le point du regard sur l'image et créer tableau 2D contenant
+    # l'emplacement du regard pour chaque frame
+	matrice_regard = np.empty(shape=(len(loader),2), dtype='float')
+	for frame_data in loader:
+		print(f"Frame {frame_data.frame_id}: gaze={frame_data.gaze_point}")
+		
+		# Visualiser le point de regard sur l'image
+		img_display = frame_data.image.copy()
+		gaze_x, gaze_y = frame_data.gaze_point
+		cv2.circle(img_display, (int(gaze_x), int(gaze_y)), 10, (0, 255, 0), 2)
+		cv2.circle(img_display, (int(gaze_x), int(gaze_y)), 3, (0, 0, 255), -1)
+  
+		matrice_regard[frame_data.frame_id][0] = gaze_x
+		matrice_regard[frame_data.frame_id][1] = gaze_y
+		
+		cv2.imshow("Frame", img_display)
+		key = cv2.waitKey(1) & 0xFF
+		if key == ord('q') or key == 27:
+			break
+	cv2.destroyAllWindows()
+ 
 
 	# 2. Prétraitement (dummy)
-	preprocessor = DummyPreprocessor()
+	preprocessor = ElisaPreprocessor()
 
 	# 3. Segmentation (dummy)
-	segmenter = DummySegmentation()
+	segmenter = ElisaSegmentation()
 
 	# Chronique temporelle : liste des résultats (frame_id, timestamp, classe)
 	timeline = []
