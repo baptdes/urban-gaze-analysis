@@ -20,11 +20,11 @@ urban-gaze-analysis/
 ## Installation
 
 Créez un environnement (recommandé avec conda) et installez les dépendances :
-	```sh
-	conda create -n APP python=3.10
-	conda activate APP
-	pip install -r requirements.txt
-	```
+```sh
+conda create -n APP python=3.10
+conda activate APP
+pip install -r requirements.txt
+```
 
 ## Lancement de la pipeline
 
