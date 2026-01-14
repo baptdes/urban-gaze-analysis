@@ -9,6 +9,8 @@ import numpy as np
 from tqdm import tqdm
 import cv2
 
+
+
 def main():
 	# Chemin du dossier de données
 	#data_folder = "data/2025-11-20_15-30-11-a3a383b4"
@@ -19,6 +21,7 @@ def main():
     
     # 1bis. Afficher le point du regard sur l'image et créer tableau 2D contenant
     # l'emplacement du regard pour chaque frame
+	"""
 	matrice_regard = np.empty(shape=(len(loader),2), dtype='float')
 	for frame_data in loader:
 		print(f"Frame {frame_data.frame_id}: gaze={frame_data.gaze_point}")
@@ -37,7 +40,7 @@ def main():
 		if key == ord('q') or key == 27:
 			break
 	cv2.destroyAllWindows()
- 
+ 	"""
 
 	# 2. Prétraitement (dummy)
 	preprocessor = ElisaPreprocessor()
@@ -56,12 +59,13 @@ def main():
 			continue
 
 		# Segmentation : renvoie directement l'objet regardé (ou None)
-		looked_object = segmenter.segment(processed)
-		# On stocke la classe et la confiance de l'objet regardé (ou None)
-		if looked_object is not None:
-			timeline.append((frame.frame_id, frame.timestamp, looked_object.class_name, looked_object.confidence))
-		else:
-			timeline.append((frame.frame_id, frame.timestamp, None, None))
+		if processed.frame_id>65  and   processed.frame_id % 200 == 0:
+			looked_object = segmenter.segment(processed)
+			# On stocke la classe et la confiance de l'objet regardé (ou None)
+			if looked_object is not None:
+				timeline.append((frame.frame_id, frame.timestamp, looked_object.class_name, looked_object.confidence))
+			else:
+				timeline.append((frame.frame_id, frame.timestamp, None, None))
 
 	# Affichage graphique
 	classes = [cl for _, _, cl, _ in timeline if cl is not None]
