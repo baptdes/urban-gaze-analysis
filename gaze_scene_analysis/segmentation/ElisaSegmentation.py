@@ -44,7 +44,7 @@ model = Mask2FormerForUniversalSegmentation.from_pretrained("facebook/mask2forme
 # Basé sur le mapping officiel : 0: road, 1: sidewalk, 2: building, etc.
 CITYSCAPES_MAP = {
     0: "route",
-    1: "route",      # sidewalk -> route (ou créer une catégorie trottoir)
+    1: "route",      # sidewalk
     2: "batiment",   # building
     3: "batiment",   # wall
     4: "batiment",   # fence
@@ -52,14 +52,13 @@ CITYSCAPES_MAP = {
     6: "feu de signalisation",
     7: "panneau",
     8: "batiment",   # vegetation
-    9: "batiment",   # terrain
     11: "humain",    # person
     12: "humain",    # rider
-    13: "véhicule motorisé", # car
-    14: "véhicule motorisé", # truck
-    15: "véhicule motorisé", # bus
-    17: "véhicule motorisé", # motorcycle
-    18: "vélo"       # bicycle
+    13: "vehicule motorise", # car
+    14: "vehicule motorise", # truck
+    15: "vehicule motorise", # bus
+    17: "vehicule motorise", # motorcycle
+    18: "velo"       # bicycle
 }
 
 class ElisaSegmentation(SegmentationInterface):
@@ -87,7 +86,8 @@ class ElisaSegmentation(SegmentationInterface):
         except (TypeError, IndexError):
             class_name = "inconnu"
 
-
+        # Code affichage
+        """
         color_palette = [list(np.random.choice(range(256), size=3)) for _ in range(len(model.config.id2label))]
         seg = predicted_map.cpu().numpy()
         color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8)
@@ -106,7 +106,5 @@ class ElisaSegmentation(SegmentationInterface):
 
         cv2.imshow("Gaze Segmentation", img_bgr)
         cv2.waitKey(1)  
-        
-        # Mask2Former en mode sémantique ne donne pas de score de confiance par pixel directement 
-        # On peut simuler 1.0 ou extraire les probabilités des logits si nécessaire.
-        return LookedObject(class_name=class_name, confidence=0.95)
+        """
+        return LookedObject(class_name=class_name, confidence=0.5) #Mask2Former ne prédit une classe que si la probabilité est supérieure à 0.5

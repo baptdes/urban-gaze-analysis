@@ -50,7 +50,10 @@ def main():
 
 	# Chronique temporelle : liste des résultats (frame_id, timestamp, classe)
 	timeline = []
+ 
+	previous_10_classes = np.empty(10, dtype=object)
 
+	looked_object = None
 	for frame in tqdm(loader, total=len(loader), desc="Traitement des frames"):
 		# Prétraitement
 		processed = preprocessor.process(frame)
@@ -59,13 +62,21 @@ def main():
 			continue
 
 		# Segmentation : renvoie directement l'objet regardé (ou None)
-		if processed.frame_id>65  and   processed.frame_id % 200 == 0:
-			looked_object = segmenter.segment(processed)
+		if processed.frame_id>66 :
+			previous_looked_object = looked_object
+			if  processed.frame_id % 200 == 0 or processed.frame_id==67:
+				looked_object = segmenter.segment(processed)
+			else :
+				looked_object = previous_looked_object
+			
 			# On stocke la classe et la confiance de l'objet regardé (ou None)
 			if looked_object is not None:
 				timeline.append((frame.frame_id, frame.timestamp, looked_object.class_name, looked_object.confidence))
 			else:
 				timeline.append((frame.frame_id, frame.timestamp, None, None))
+			
+				
+				
 
 	# Affichage graphique
 	classes = [cl for _, _, cl, _ in timeline if cl is not None]
