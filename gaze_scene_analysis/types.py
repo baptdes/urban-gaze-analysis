@@ -7,7 +7,7 @@ from typing import Tuple
 @dataclass
 class FrameData:
     frame_id: int # Indice de la frame dans la séquence
-    image: np.ndarray # Image de la frame
+    image: object
     gaze_point: tuple[int,int] # Coordonnées du point de regard (x, y) dans l'image
     gyro: Tuple[float, float, float] # Données gyroscopiques (x, y, z) en deg/s
     accel: Tuple[float, float, float] # Données d'accéléromètre (x, y, z) en g

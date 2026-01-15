@@ -3,7 +3,7 @@
 import sys
 from gaze_scene_analysis.loaders.VideoLoader import VideoLoader
 from gaze_scene_analysis.preprocessing.DummyPreprocessor import DummyPreprocessor
-from gaze_scene_analysis.segmentation.DummySegmentation import DummySegmentation
+from gaze_scene_analysis.segmentation.SegformerFinedtuned import SegformerFinedtuned
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
@@ -19,7 +19,7 @@ def main():
 	preprocessor = DummyPreprocessor()
 
 	# 3. Segmentation (dummy)
-	segmenter = DummySegmentation()
+	segmenter = SegformerFinedtuned()
 
 	# Chronique temporelle : liste des résultats (frame_id, timestamp, classe)
 	timeline = []
