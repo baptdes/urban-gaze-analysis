@@ -34,8 +34,8 @@ def most_frequent(class_list):
 
 def main():
 	# Chemin du dossier de données
-	#data_folder = "data/2025-11-20_15-30-11-a3a383b4"
-	data_folder = "data/2025-11-20_15-40-17-10b70589"
+	data_folder = "data/2025-11-20_15-30-11-a3a383b4"
+	#data_folder = "data/2025-11-20_15-40-17-10b70589"
 
 	# 1. Chargement des données vidéo et capteurs
 	loader = VideoLoader(data_folder)
@@ -147,6 +147,7 @@ def main():
 	plt.title("Analyse oculométrique sur frames labellisées")
 	plt.tight_layout()
 	plt.show()
+	plt.save(f"chronique_temp_cptmax{cpt_max}_intervalle{intervalle_segmentation}.png")
 
 if __name__ == "__main__":
 	main()
