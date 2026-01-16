@@ -4,10 +4,31 @@ import sys
 from gaze_scene_analysis.loaders.VideoLoader import VideoLoader
 from gaze_scene_analysis.preprocessing.ElisaPreprocessor import ElisaPreprocessor
 from gaze_scene_analysis.segmentation.ElisaSegmentation import ElisaSegmentation
+from gaze_scene_analysis.types import LookedObject
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 import cv2
+from collections import Counter
+
+def most_frequent(class_list):
+    """
+    Identifie la classe la plus fréquente et renvoie un LookedObject correspondant.
+    """
+    # Filtrer les None
+    clean_list = [c for c in class_list if c is not None]
+    if not clean_list:
+        return None
+
+    occurence_count = Counter(clean_list)
+    
+    # Récupère la classe la plus fréquente
+    most_common_class, count = occurence_count.most_common(1)[0]
+    
+    # Calcul d'un score de confiance basé sur la fréquence
+    confidence_score = count / len(class_list)
+    
+    return LookedObject(class_name=most_common_class, confidence=confidence_score)
 
 
 
@@ -49,11 +70,20 @@ def main():
 	segmenter = ElisaSegmentation()
 
 	# Chronique temporelle : liste des résultats (frame_id, timestamp, classe)
+	start_frame = 67 # numéro de la frame à partir de laquelle on a l'image
+	intervalle_segmentation = 1000 # Toutes les combien de frames on récupère une classe
+	cpt_max = 10 # Nb de frames consécutives sur laquelle on effectue la segmentation pour récupérer la classe majoritaire
 	timeline = []
- 
-	previous_10_classes = np.empty(10, dtype=object)
-
+	# Initialisation des tableaux où on sauvegarde les infos nécessaires pour la chroniques temporelle
+	previous_10_frame_ids = np.empty(10, dtype=object)
+	previous_10_frame_ts = np.empty(10, dtype=object)
+	previous_10_classes = np.full(10, None, dtype=object)
+	# Drapeau pour savoir si on est sur une phase de segmentation consécutives
+	save = False
+	# Compteur pour itérer sur les frames consécutives qu'on traite
+	cpt = 0
 	looked_object = None
+ 
 	for frame in tqdm(loader, total=len(loader), desc="Traitement des frames"):
 		# Prétraitement
 		processed = preprocessor.process(frame)
@@ -62,21 +92,40 @@ def main():
 			continue
 
 		# Segmentation : renvoie directement l'objet regardé (ou None)
-		if processed.frame_id>66 :
+		if processed.frame_id>=start_frame :
 			previous_looked_object = looked_object
-			if  processed.frame_id % 200 == 0 or processed.frame_id==67:
+			if  (processed.frame_id % intervalle_segmentation == 0 or processed.frame_id==start_frame) or save:
 				looked_object = segmenter.segment(processed)
+				save = True
+				previous_10_classes[cpt] = looked_object.class_name
+				previous_10_frame_ids[cpt] = frame.frame_id
+				previous_10_frame_ts[cpt] = frame.timestamp
+				cpt += 1
 			else :
 				looked_object = previous_looked_object
 			
-			# On stocke la classe et la confiance de l'objet regardé (ou None)
-			if looked_object is not None:
-				timeline.append((frame.frame_id, frame.timestamp, looked_object.class_name, looked_object.confidence))
-			else:
-				timeline.append((frame.frame_id, frame.timestamp, None, None))
+			# On enregistre le résultats pour les frames consécutives une fois qu'on les a parcourues
+			if cpt == cpt_max :
+				looked_object = most_frequent(previous_10_classes.tolist())
+				print(f"\n{previous_10_classes} \nMOST FREQUENT = {looked_object.class_name} avec confiance = {looked_object.confidence}\n")
+				# On stocke la classe et la confiance de l'objet regardé (ou None)
+				if looked_object is not None:
+					for id, ts in zip(previous_10_frame_ids, previous_10_frame_ts):
+						timeline.append((id, ts, looked_object.class_name, looked_object.confidence))
+				else:
+					timeline.append((frame.frame_id, frame.timestamp, None, None))	
+     
+				# Remise à 0 du compteur et du drapeau
+				cpt = 0
+				save = False
+    
+			# Lorsqu'on segemente pas, on met le nom de la dernière classe qui a été vue
+			elif cpt == 0:
+				if looked_object is not None:
+					timeline.append((frame.frame_id, frame.timestamp, looked_object.class_name, looked_object.confidence))	
+				else:
+					timeline.append((frame.frame_id, frame.timestamp, None, None))
 			
-				
-				
 
 	# Affichage graphique
 	classes = [cl for _, _, cl, _ in timeline if cl is not None]
