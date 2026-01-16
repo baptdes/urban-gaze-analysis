@@ -71,7 +71,7 @@ def main():
 
 	# Chronique temporelle : liste des résultats (frame_id, timestamp, classe)
 	start_frame = 67 # numéro de la frame à partir de laquelle on a l'image
-	intervalle_segmentation = 1000 # Toutes les combien de frames on récupère une classe
+	intervalle_segmentation = 50 # Toutes les combien de frames on récupère une classe
 	cpt_max = 10 # Nb de frames consécutives sur laquelle on effectue la segmentation pour récupérer la classe majoritaire
 	timeline = []
 	# Initialisation des tableaux où on sauvegarde les infos nécessaires pour la chroniques temporelle
