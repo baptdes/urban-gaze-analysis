@@ -75,9 +75,9 @@ def main():
 	cpt_max = 5 # Nb de frames consécutives sur laquelle on effectue la segmentation pour récupérer la classe majoritaire
 	timeline = []
 	# Initialisation des tableaux où on sauvegarde les infos nécessaires pour la chroniques temporelle
-	previous_n_frame_ids = np.empty(10, dtype=object)
-	previous_n_frame_ts = np.empty(10, dtype=object)
-	previous_n_classes = np.full(10, None, dtype=object)
+	previous_n_frame_ids = np.empty(cpt_max, dtype=object)
+	previous_n_frame_ts = np.empty(cpt_max, dtype=object)
+	previous_n_classes = np.full(cpt_max, None, dtype=object)
 	# Drapeau pour savoir si on est sur une phase de segmentation consécutives
 	save = False
 	# Compteur pour itérer sur les frames consécutives qu'on traite
@@ -88,7 +88,7 @@ def main():
 		# Prétraitement
 		processed = preprocessor.process(frame)
 		if processed is None:
-			timeline.append((frame.frame_id, frame.timestamp, None))
+			timeline.append((frame.frame_id, frame.timestamp, None, None))
 			continue
 
 		# Segmentation : renvoie directement l'objet regardé (ou None)
