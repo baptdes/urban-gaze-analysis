@@ -17,10 +17,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from transformers import logging as transformers_logging
 transformers_logging.set_verbosity_error()
 
-import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-
-import tensorflow as tf
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -37,9 +34,18 @@ OBJECTS : list[str] = [ # en français, et en commentaire le nom du label dans l
     "route" # road
 ]
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Utilisation du device: {device}")
+
+if not torch.cuda.is_available():
+    print("ATTENTION: GPU non disponible, utilisation du CPU")
+
 processor = AutoImageProcessor.from_pretrained("facebook/mask2former-swin-small-cityscapes-semantic", use_fast=True)
 model = Mask2FormerForUniversalSegmentation.from_pretrained("facebook/mask2former-swin-small-cityscapes-semantic")
 
+# Déplacer le modèle sur le GPU
+model = model.to(device)
+model.eval()
 
 # Basé sur le mapping officiel : 0: road, 1: sidewalk, 2: building, etc.
 CITYSCAPES_MAP = {
@@ -65,7 +71,7 @@ class ElisaSegmentation(SegmentationInterface):
     def segment(self, frame: FrameData) -> LookedObject | None:
         image = Image.fromarray(frame.image) if isinstance(frame.image, np.ndarray) else frame.image
         
-        inputs = processor(images=frame.image, return_tensors="pt")
+        inputs = processor(images=frame.image, return_tensors="pt").to(device)   
         with torch.no_grad():
             outputs = model(**inputs)
             
@@ -85,11 +91,11 @@ class ElisaSegmentation(SegmentationInterface):
                 class_name = "hors-champ"
         except (TypeError, IndexError):
             class_name = "inconnu"
-
-        # Code affichage
+        
         """
+        # Code affichage
         color_palette = [list(np.random.choice(range(256), size=3)) for _ in range(len(model.config.id2label))]
-        seg = predicted_map.cpu().numpy()
+        seg = predicted_map.cpu().numpy()  # Ramener sur CPU pour le traitement d'affichage
         color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8)
         palette = np.array(color_palette)
         for label, color in enumerate(palette):
@@ -103,8 +109,9 @@ class ElisaSegmentation(SegmentationInterface):
         if class_name != "hors-champ":
             cv2.circle(img_bgr, (gaze_x, gaze_y), 10, (0, 255, 0), 2) # Cercle vert au point de regard
             cv2.putText(img_bgr, class_name, (gaze_x + 15, gaze_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-
+        
         cv2.imshow("Gaze Segmentation", img_bgr)
-        cv2.waitKey(1)  
+        cv2.waitKey(1)
         """
+
         return LookedObject(class_name=class_name, confidence=0.5) #Mask2Former ne prédit une classe que si la probabilité est supérieure à 0.5
