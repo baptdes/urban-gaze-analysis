@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import cv2
 from scipy import ndimage
+from tqdm import tqdm
 
 CITYSCAPES_MAP = {
     0: "route",
@@ -52,6 +53,12 @@ class SegformerFinedtuned(SegmentationInterface):
             for id, name in id2label.items():
                 print(f"  {id}: {name}")
 
+            total_params = sum(p.numel() for p in self.model.parameters())
+            trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+
+            print(f"Nombre total de paramètres : {total_params}")
+            print(f"Nombre de paramètres entraînables : {trainable_params}")
+
     def get_segmentation(self, image: np.ndarray, 
                         confidence_threshold: float = 0.75,
                         min_region_size: int = 150) -> tuple[np.ndarray, torch.Tensor]:
@@ -82,17 +89,40 @@ class SegformerFinedtuned(SegmentationInterface):
         
         return segmentation, probs
     
-    def segment(self, frame: FrameData) -> LookedObject | None:
-        """Retourne l'objet regarde selon le point de gaze, mappe à nos classes."""
+    def segment(self, frame: FrameData, gaze_radius: int = 20) -> LookedObject | None:
+        """
+        Retourne l'objet regardé selon le point de gaze, en considérant une petite zone autour.
+        
+        Args:
+            frame: FrameData contenant l'image et le point de gaze.
+            gaze_radius: rayon (en pixels) autour du point de gaze pour prendre en compte les pixels voisins.
+        """
         segmentation, probs = self.get_segmentation(frame.image)
+        h, w = segmentation.shape
+
         gaze_x, gaze_y = frame.gaze_point
         gaze_x = int(round(gaze_x))
         gaze_y = int(round(gaze_y))
-        label_id = int(segmentation[gaze_y, gaze_x])
+
+        # Définir la zone autour du gaze point
+        x_min = max(0, gaze_x - gaze_radius)
+        x_max = min(w, gaze_x + gaze_radius + 1)
+        y_min = max(0, gaze_y - gaze_radius)
+        y_max = min(h, gaze_y + gaze_radius + 1)
+
+        # Extraire la zone autour du regard
+        region_seg = segmentation[y_min:y_max, x_min:x_max]
+        region_probs = probs[0, :, y_min:y_max, x_min:x_max]  # shape: (num_classes, H, W)
+
+        # Calculer la probabilité moyenne par classe dans la région
+        avg_probs_per_class = region_probs.mean(dim=(1, 2))  # shape: (num_classes,)
+        label_id = int(avg_probs_per_class.argmax().item())
+        confidence = float(avg_probs_per_class[label_id].item())
+
         mapped_class_name = CITYSCAPES_MAP.get(label_id)
-        confidence = float(probs[0, label_id, gaze_y, gaze_x].item())
         if mapped_class_name is None:
             return None
+
         return LookedObject(
             class_name=mapped_class_name,
             confidence=confidence
@@ -113,37 +143,53 @@ if __name__ == "__main__":
 
     # Palette de couleurs pour la segmentation
     cmap = plt.cm.tab20
-
     skip_frames = 100
 
-    for frame_data in loader:
-        if frame_data.frame_id < skip_frames:
-            continue
+    # Chronique temporelle pour le graphique final
+    timeline = []
 
+    for frame_data in tqdm(loader, desc="Traitement des frames"):
+        if frame_data.frame_id < skip_frames or frame_data.frame_id % 10 != 0:
+            continue
+        
         # --- Segmentation ---
         segmentation, probs = segmenter.get_segmentation(frame_data.image)
         unique_labels = np.unique(segmentation)
-
+        
         # --- Creer une image couleur pour l'affichage ---
         seg_color = np.zeros_like(frame_data.image, dtype=np.uint8)
         for label in unique_labels:
             if CITYSCAPES_MAP.get(label) is None:
+                mask = segmentation == label
                 seg_color[mask] = NEUTRAL_COLOR
                 continue
             mask = segmentation == label
             rgb_color = np.array(cmap(label / 19.0)[:3]) * 255
             bgr_color = (int(rgb_color[2]), int(rgb_color[1]), int(rgb_color[0]))
             seg_color[mask] = bgr_color
-
+        
         # Melanger l'image originale et la segmentation
         alpha = 0.6
         overlay = cv2.addWeighted(frame_data.image, 1 - alpha, seg_color, alpha, 0)
-
+        
+        # --- Objet regardé ---
+        looked_object = segmenter.segment(frame_data)
+        
+        # Enregistrer pour la chronique temporelle
+        if looked_object is not None:
+            timeline.append((frame_data.frame_id, frame_data.timestamp, 
+                            looked_object.class_name, looked_object.confidence))
+            text_gaze = f"Regard: {looked_object.class_name} ({looked_object.confidence:.2f})"
+            cv2.putText(overlay, text_gaze, (10, 50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
+        else:
+            timeline.append((frame_data.frame_id, frame_data.timestamp, None, None))
+        
         # Dessiner le point de regard
         gaze_x, gaze_y = frame_data.gaze_point
         cv2.circle(overlay, (int(gaze_x), int(gaze_y)), 10, (0, 255, 0), 2)
         cv2.circle(overlay, (int(gaze_x), int(gaze_y)), 3, (0, 0, 255), -1)
-
+        
         # --- Fusion des labels mappes pour l'affichage ---
         mapped_label_to_info = {}
         for label in unique_labels:
@@ -157,7 +203,7 @@ if __name__ == "__main__":
                 mapped_label_to_info[mapped_class_name] = {
                     "bgr_color": bgr_color
                 }
-
+        
         # Ajouter les labels fusionnes comme texte
         y0 = 20
         dy = 20
@@ -166,7 +212,7 @@ if __name__ == "__main__":
             bgr_color = info["bgr_color"]
             cv2.putText(overlay, text, (10, y0 + i * dy),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, bgr_color, 1, cv2.LINE_AA)
-
+        
         # Affichage
         cv2.imshow(window_name, overlay)
         key = cv2.waitKey(1) & 0xFF
@@ -175,3 +221,46 @@ if __name__ == "__main__":
 
     cv2.destroyAllWindows()
 
+    # --- Affichage du graphique final ---
+    print("\nGénération du graphique de chronique temporelle...")
+
+    # Extraire les classes détectées
+    classes = [cl for _, _, cl, _ in timeline if cl is not None]
+    unique_classes = list(sorted(set(classes)))
+
+    if not unique_classes:
+        print("Aucune classe détectée, pas de graphique à afficher.")
+    else:
+        # Créer un mapping classe -> position Y
+        class_to_y = {cl: i for i, cl in enumerate(unique_classes)}
+        colors = plt.get_cmap('tab20', len(unique_classes))
+        
+        plt.figure(figsize=(14, 6))
+        
+        # Créer des barres pour chaque classe
+        for i, cl in enumerate(unique_classes):
+            xs = [fid for fid, _, c, _ in timeline if c == cl]
+            if xs:
+                plt.bar(xs, [1]*len(xs), bottom=[i]*len(xs), 
+                    color=colors(i), edgecolor='k', linewidth=0.5, 
+                    width=1.0, label=cl)
+        
+        plt.yticks(np.arange(len(unique_classes)) + 0.5, unique_classes)
+        plt.xlabel("Frame Number")
+        plt.ylabel("Classes détectées")
+        plt.title("Chronique temporelle de l'analyse oculométrique")
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.grid(axis='x', alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+        
+        # Statistiques supplémentaires
+        print("\n=== Statistiques ===")
+        print(f"Nombre total de frames analysées: {len(timeline)}")
+        print(f"Frames avec détection: {len(classes)}")
+        print(f"Classes uniques détectées: {len(unique_classes)}")
+        print("\nRépartition par classe:")
+        for cl in unique_classes:
+            count = classes.count(cl)
+            percentage = (count / len(timeline)) * 100
+            print(f"  {cl}: {count} frames ({percentage:.1f}%)")

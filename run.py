@@ -25,6 +25,9 @@ def main():
 	timeline = []
 
 	for frame in tqdm(loader, total=len(loader), desc="Traitement des frames"):
+		if frame.frame_id % 3 != 0:
+			continue
+
 		# Prétraitement
 		processed = preprocessor.process(frame)
 		if processed is None:
@@ -33,6 +36,7 @@ def main():
 
 		# Segmentation : renvoie directement l'objet regardé (ou None)
 		looked_object = segmenter.segment(processed)
+		print(f"Frame {frame.frame_id}: Looked Object: {looked_object}")
 		# On stocke la classe et la confiance de l'objet regardé (ou None)
 		if looked_object is not None:
 			timeline.append((frame.frame_id, frame.timestamp, looked_object.class_name, looked_object.confidence))
