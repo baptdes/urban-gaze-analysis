@@ -34,8 +34,12 @@ def most_frequent(class_list):
 
 def main():
 	# Chemin du dossier de données
-	data_folder = "data/2025-11-20_15-30-11-a3a383b4"
-	#data_folder = "data/2025-11-20_15-40-17-10b70589"
+	depart = "n7"
+	#depart = "alsace_lorraine"
+	if (depart=="n7"):
+		data_folder = "data/2025-11-20_15-30-11-a3a383b4"
+	else:
+		data_folder = "data/2025-11-20_15-40-17-10b70589"
 
 	# 1. Chargement des données vidéo et capteurs
 	loader = VideoLoader(data_folder)
@@ -71,7 +75,7 @@ def main():
 
 	# Chronique temporelle : liste des résultats (frame_id, timestamp, classe)
 	start_frame = 67 # numéro de la frame à partir de laquelle on a l'image
-	intervalle_segmentation = 30 # Toutes les combien de frames on récupère une classe
+	intervalle_segmentation = 15# Toutes les combien de frames on récupère une classe
 	cpt_max = 5 # Nb de frames consécutives sur laquelle on effectue la segmentation pour récupérer la classe majoritaire
 	timeline = []
 	# Initialisation des tableaux où on sauvegarde les infos nécessaires pour la chroniques temporelle
@@ -147,7 +151,7 @@ def main():
 	plt.title("Analyse oculométrique sur frames labellisées")
 	plt.tight_layout()
 	plt.show()
-	plt.save(f"chronique_temp_cptmax{cpt_max}_intervalle{intervalle_segmentation}.png")
+	plt.imsave(f"chronique_temp_{depart}_cptmax{cpt_max}_intervalle{intervalle_segmentation}.png")
 
 if __name__ == "__main__":
 	main()
