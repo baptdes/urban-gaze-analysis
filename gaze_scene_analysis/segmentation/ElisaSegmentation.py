@@ -10,14 +10,17 @@ import warnings
 import random
 import cv2
 
-# 1. Suppress TensorFlow messages (already in your code, but for completeness)
+# Suppress TensorFlow messages (already in your code, but for completeness)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-# 2. Suppress Transformers specific warnings
+# Suppress Transformers specific warnings
 from transformers import logging as transformers_logging
 transformers_logging.set_verbosity_error()
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+# Suppress general Python UserWarnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
 import numpy as np
 import matplotlib.pyplot as plt

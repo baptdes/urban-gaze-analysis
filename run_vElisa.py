@@ -77,7 +77,7 @@ def main():
 
 	# Chronique temporelle : liste des résultats (frame_id, timestamp, classe)
 	start_frame = 67 # numéro de la frame à partir de laquelle on a l'image
-	intervalle_segmentation = 500 # Toutes les combien de frames on récupère une classe
+	intervalle_segmentation = 1000 # Toutes les combien de frames on récupère une classe
 	cpt_max = 5 # Nb de frames consécutives sur laquelle on effectue la segmentation pour récupérer la classe majoritaire
 	timeline = []
 	# Initialisation des tableaux où on sauvegarde les infos nécessaires pour la chroniques temporelle
@@ -134,7 +134,7 @@ def main():
 					timeline.append((frame.frame_id, frame.timestamp, None, None))
 			
 
-	# Affichage graphique
+	#---------------------- Analyse oculométrique -----------------------
 	classes = [cl for _, _, cl, _ in timeline if cl is not None]
 	unique_classes = list(sorted(set(classes)))
 	if not unique_classes:
@@ -158,7 +158,7 @@ def main():
 	print(f"Graphique sauvegardé sous : {filename}")
 	plt.show()
  
-	# Plot score de confiance
+	#---------------------- Plot score de confiance -----------------------
 	plt.figure(figsize=(14, 5)) 
     # Extraction des données : on ne garde que les frames où une confiance a été calculée
     # Structure de timeline : (frame_id, timestamp, class_name, confidence)
@@ -166,23 +166,19 @@ def main():
     # Séparation X (frames) et Y (confiance)
 	xs_conf = [d[0] for d in data_confiance]
 	ys_conf = [d[1] for d in data_confiance]
-
 	# Tracé de la courbe
 	#plt.plot(xs_conf, ys_conf, color='royalblue', linestyle='-', linewidth=1, label='Confiance Mixte')
 	plt.scatter(xs_conf, ys_conf, s=2, alpha=0.6)
-
 	plt.title(f"Évolution du score de confiance")
 	plt.xlabel("Numéro de Frame")
-	plt.ylabel("Confiance (0-1)")
+	plt.ylabel("Confiance")
 	plt.ylim(0, 1.05) # Fixe l'axe Y entre 0 et 1.05
 	plt.grid(True, linestyle='--', alpha=0.5)
 	plt.tight_layout()
-
 	# Sauvegarde
 	filename_conf = f"confiance_{depart}_cptmax{cpt_max}_int{intervalle_segmentation}.png"
 	plt.savefig(filename_conf, dpi=300)
 	print(f"Graphique de confiance sauvegardé sous : {filename_conf}")
-
 	plt.show()
     
 if __name__ == "__main__":
